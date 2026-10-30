@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Who Is a Spy?</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #101321;
+  color: #f5f6ff;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 24px 14px;
+}
+.app { width: 100%; max-width: 520px; }
+header { text-align: center; margin: 16px 0 26px; }
+.logo { font-size: 48px; }
+h1 { margin: 6px 0; font-size: 32px; }
+header p { color: #aeb3cb; margin: 8px 0; }
+.panel {
+  background: #1b2034;
+  border: 1px solid #303750;
+  border-radius: 20px;
+  padding: 22px;
+  margin-bottom: 16px;
+}
+h2 { font-size: 20px; margin: 0 0 16px; }
+label { display: block; color: #c5c9dd; margin: 14px 0 7px; }
+input, select {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #424a67;
+  background: #111628;
+  color: white;
+  font: inherit;
+}
+button {
+  border: 0;
+  padding: 13px 16px;
+  border-radius: 11px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: .15s;
+}
+button:active { transform: scale(.98); }
+.primary { background: #8b7cff; color: #fff; width: 100%; margin-top: 18px; }
+.secondary { background: #303750; color: white; }
+.danger { background: #ff617d; color: white; }
+button:disabled { opacity: .4; cursor: not-allowed; }
+.hidden { display: none !important; }
+.muted { color: #aeb3cb; font-size: 14px; line-height: 1.6; }
+.row { display: flex; gap: 10px; align-items: center; }
+.row > * { flex: 1; }
+.progress {
+  height: 7px; background: #303750; border-radius: 10px;
+  overflow: hidden; margin: 15px 0;
+}
+.progress div { height: 100%; background: #8b7cff; width: 0; transition: .3s; }
+.card {
+  background: linear-gradient(145deg, #35305f, #24294b);
+  border: 1px solid #7164c5;
+  border-radius: 18px;
+  padding: 35px 15px;
+  text-align: center;
+  margin: 20px 0;
+}
+.card .big { font-size: 42px; margin-bottom: 12px; }
+.word { font-size: 29px; font-weight: 800; overflow-wrap: anywhere; }
+.player-list { display: grid; gap: 10px; }
+.player {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px; border-radius: 12px; background: #252b41;
+}
+.player input { width: auto; }
+.player .name { flex: 1; }
+.player small { color: #aeb3cb; }
+.note {
+  border-radius: 12px; padding: 13px;
+  background: #292e46; color: #d5d8eb;
+  font-size: 14px; line-height: 1.6;
+}
+#result { text-align: center; }
+#result .big { font-size: 58px; }
+footer { text-align: center; color: #8188a5; font-size: 12px; margin: 24px; }
+</style>
+</head>
+<body>
+<main class="app">
+<header>
+  <div class="logo">🕵️</div>
+  <h1>Who Is a Spy?</h1>
+  <p>Temukan penyusup di antara temanmu!</p>
+</header>
+
+<section id="setup" class="panel">
+  <h2>🎮 Persiapan permainan</h2>
+  <label for="count">Jumlah pemain (3–12)</label>
+  <input id="count" type="number" min="3" max="12" value="5">
+  <label for="spies">Jumlah spy</label>
+  <select id="spies">
+    <option value="1">1 Spy</option>
+    <option value="2">2 Spy</option>
+    <option value="3">3 Spy</option>
+  </select>
+  <label for="category">Kategori kata</label>
+  <select id="category">
+    <option value="campuran">🎲 Campuran</option>
+    <option value="makanan">🍜 Makanan</option>
+    <option value="hewan">🐱 Hewan</option>
+    <option value="tempat">🌍 Tempat</option>
+    <option value="benda">📦 Benda</option>
+  </select>
+  <div class="note">
+    Semua pemain melihat kata secara bergiliran. Jangan biarkan pemain lain melihat layar saat kamu membuka kartu!
+  </div>
+  <button class="primary" onclick="startGame()">Mulai permainan →</button>
+</section>
+
+<section id="names" class="panel hidden">
+  <h2>👥 Nama pemain</h2>
+  <p class="muted">Ganti nama pemain sesuai kelompokmu.</p>
+  <div id="nameInputs"></div>
+  <button class="primary" onclick="saveNames()">Lanjut ke kartu rahasia →</button>
+</section>
+
+<section id="reveal" class="panel hidden">
+  <p class="muted" id="roundLabel">PEMBAGIAN KARTU</p>
+  <div class="progress"><div id="progressBar"></div></div>
+  <h2 id="turnTitle">Berikan HP kepada pemain 1</h2>
+  <div id="secretCard" class="card">
+    <div class="big">🎴</div>
+    <p>Pastikan hanya kamu yang melihat layar.</p>
+    <button class="primary" onclick="showSecret()">Lihat kartu rahasia</button>
+  </div>
+  <button id="nextPlayer" class="primary hidden" onclick="nextReveal()">Saya sudah melihat →</button>
+</section>
+
+<section id="discussion" class="panel hidden">
+  <h2>💬 Waktunya berdiskusi!</h2>
+  <div class="card">
+    <div class="big">🤔</div>
+    <div class="word">Siapa yang mencurigakan?</div>
+    <p class="muted">Bergiliran memberikan petunjuk tentang kata kalian. Jangan menyebut kata secara langsung!</p>
+  </div>
+  <div class="note">
+    <b>Aturan:</b><br>
+    1. Setiap pemain memberi petunjuk.<br>
+    2. Diskusikan jawaban yang terasa mencurigakan.<br>
+    3. Pilih satu pemain untuk dieliminasi.
+  </div>
+  <button class="primary" onclick="showVoting()">Mulai voting →</button>
+</section>
+
+<section id="voting" class="panel hidden">
+  <h2>🗳️ Siapa yang kamu curigai?</h2>
+  <p class="muted">Pilih satu pemain yang paling mungkin menjadi spy. Lakukan voting secara lisan atau bergiliran.</p>
+  <div id="voteList" class="player-list"></div>
+  <button class="primary" onclick="eliminate()">Eliminasi pemain terpilih</button>
+</section>
+
+<section id="result" class="panel hidden">
+  <div class="big" id="resultEmoji">🎉</div>
+  <h2 id="resultTitle">Hasil voting</h2>
+  <p id="resultText"></p>
+  <div class="card">
+    <p class="muted">KATA WARGA</p>
+    <div class="word" id="citizenWord"></div>
+    <p class="muted">KATA SPY</p>
+    <div class="word" id="spyWord"></div>
+  </div>
+  <div id="roleResults" class="player-list"></div>
+  <button class="primary" onclick="playAgain()">Main lagi 🔄</button>
+  <button class="secondary" style="width:100%;margin-top:10px" onclick="location.reload()">Kembali ke menu</button>
+</section>
+
+<footer>WHO IS A SPY? · Party Game 🎭</footer>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const words = {
+  makanan: [
+    ["Bakso","Soto"], ["Pizza","Burger"], ["Sate","Rendang"],
+    ["Sushi","Onigiri"], ["Es krim","Yoghurt"], ["Martabak","Pancake"],
+    ["Mie ayam","Mie goreng"], ["Donat","Roti"]
+  ],
+  hewan: [
+    ["Kucing","Harimau"], ["Anjing","Serigala"], ["Kelinci","Hamster"],
+    ["Elang","Burung hantu"], ["Buaya","Komodo"], ["Lebah","Tawon"],
+    ["Lumba-lumba","Hiu"], ["Kupu-kupu","Ngengat"]
+  ],
+  tempat: [
+    ["Pantai","Danau"], ["Sekolah","Kampus"], ["Rumah sakit","Klinik"],
+    ["Bandara","Stasiun"], ["Perpustakaan","Toko buku"], ["Gunung","Bukit"],
+    ["Bioskop","Teater"], ["Pasar","Mal"]
+  ],
+  benda: [
+    ["Pensil","Pulpen"], ["Laptop","Tablet"], ["Kipas","AC"],
+    ["Cermin","Jendela"], ["Koper","Ransel"], ["Jam tangan","Gelang"],
+    ["Payung","Jas hujan"], ["Gitar","Ukulele"]
+  ]
+};
+
+let players = [];
+let spyCount = 1;
+let citizenWord = "";
+let spyWord = "";
+let revealIndex = 0;
+let selectedVote = -1;
+
+function show(id) {
+  ["setup","names","reveal","discussion","voting","result"]
+    .forEach(x => $(x).classList.toggle("hidden", x !== id));
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function startGame() {
+  const count = Number($("count").value);
+  spyCount = Number($("spies").value);
+
+  if (!Number.isInteger(count) || count < 3 || count > 12) {
+    alert("Jumlah pemain harus antara 3 sampai 12.");
+    return;
+  }
+  if (spyCount >= count) {
+    alert("Jumlah spy harus lebih sedikit dari jumlah pemain.");
+    return;
+  }
+
+  players = Array.from({length: count}, (_, i) => ({
+    name: "Pemain " + (i + 1),
+    spy: false,
+    out: false
+  }));
+
+  shuffle(players);
+  players.slice(0, spyCount).forEach(p => p.spy = true);
+
+  const cat = $("category").value;
+  const categories = cat === "campuran" ? Object.keys(words) : [cat];
+  const pool = categories.flatMap(c => words[c]);
+  const pair = pool[Math.floor(Math.random() * pool.length)];
+  const reverse = Math.random() < 0.5;
+  citizenWord = pair[reverse ? 1 : 0];
+  spyWord = pair[reverse ? 0 : 1];
+
+  $("nameInputs").innerHTML = players.map((p, i) =>
+    `<label>Nama pemain ${i + 1}</label>
+     <input data-player="${i}" maxlength="24" value="${p.name}">`
+  ).join("");
+
+  show("names");
+}
+
+function saveNames() {
+  document.querySelectorAll("[data-player]").forEach(input => {
+    players[Number(input.dataset.player)].name =
+      input.value.trim() || players[Number(input.dataset.player)].name;
+  });
+  revealIndex = 0;
+  renderReveal();
+  show("reveal");
+}
+
+function renderReveal() {
+  $("turnTitle").textContent =
+    "Berikan HP kepada " + players[revealIndex].name;
+  $("roundLabel").textContent =
+    "KARTU " + (revealIndex + 1) + " DARI " + players.length;
+  $("progressBar").style.width =
+    (revealIndex / players.length * 100) + "%";
+  $("secretCard").innerHTML = `
+    <div class="big">🎴</div>
+    <p>Pastikan hanya kamu yang melihat layar.</p>
+    <button class="primary" onclick="showSecret()">Lihat kartu rahasia</button>
+  `;
+  $("nextPlayer").classList.add("hidden");
+}
+
+function showSecret() {
+  const p = players[revealIndex];
+  $("secretCard").innerHTML = `
+    <div class="big">${p.spy ? "🕵️" : "🟢"}</div>
+    <p>${p.spy ? "KAMU ADALAH SPY!" : "KATA RAHASIAMU"}</p>
+    <div class="word">${p.spy ? spyWord : citizenWord}</div>
+    <p class="muted">${p.spy
+      ? "Samarkan identitasmu dan ikuti percakapan."
+      : "Cari spy tanpa membocorkan kata secara langsung."}</p>
+    <button class="secondary" onclick="hideSecret()">Tutup kartu</button>
+  `;
+  $("nextPlayer").classList.remove("hidden");
+}
+
+function hideSecret() {
+  $("secretCard").innerHTML = `
+    <div class="big">🔒</div>
+    <p>Kartu disembunyikan.</p>
+    <p class="muted">Serahkan HP kepada pemain berikutnya.</p>
+  `;
+}
+
+function nextReveal() {
+  revealIndex++;
+  if (revealIndex >= players.length) {
+    show("discussion");
+  } else {
+    renderReveal();
+  }
+}
+
+function showVoting() {
+  selectedVote = -1;
+  $("voteList").innerHTML = players
+    .map((p, i) => ({p, i}))
+    .filter(x => !x.p.out)
+    .map(({p, i}) => `
+      <label class="player">
+        <input type="radio" name="vote" value="${i}"
+          onchange="selectedVote=${i}">
+        <span class="name">${escapeHTML(p.name)}</span>
+        <small>${p.out ? "Keluar" : "Pilih"}</small>
+      </label>
+    `).join("");
+  show("voting");
+}
+
+function escapeHTML(s) {
+  return s.replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;",
+    '"':"&quot;", "'":"&#39;"
+  })[c]);
+}
+
+function eliminate() {
+  if (selectedVote < 0 || players[selectedVote].out) {
+    alert("Pilih pemain terlebih dahulu.");
+    return;
+  }
+
+  const p = players[selectedVote];
+  p.out = true;
+
+  const alive = players.filter(x => !x.out);
+  const spiesAlive = alive.filter(x => x.spy).length;
+  const citizensAlive = alive.length - spiesAlive;
+
+  let title, emoji, text;
+
+  if (p.spy) {
+    title = "Spy tertangkap!";
+    emoji = "🎉";
+    text = p.name + " ternyata adalah SPY!";
+  } else {
+    title = "Warga biasa tertangkap!";
+    emoji = "😈";
+    text = p.name + " bukan spy. Tim warga harus lebih berhati-hati!";
+  }
+
+  // Spy menang jika jumlah spy hidup sama atau lebih banyak
+  // daripada warga yang masih hidup.
+  if (spiesAlive === 0) {
+    title = "WARGA MENANG!";
+    emoji = "🏆";
+    text += " Semua spy telah ditemukan!";
+  } else if (spiesAlive >= citizensAlive) {
+    title = "SPY MENANG!";
+    emoji = "🕵️";
+    text += " Jumlah spy kini menyamai atau melebihi warga!";
+  }
+
+  $("resultTitle").textContent = title;
+  $("resultEmoji").textContent = emoji;
+  $("resultText").textContent = text;
+  $("citizenWord").textContent = citizenWord;
+  $("spyWord").textContent = spyWord;
+
+  $("roleResults").innerHTML = players.map(p => `
+    <div class="player">
+      <span>${p.spy ? "🕵️" : "🟢"}</span>
+      <span class="name">${escapeHTML(p.name)}</span>
+      <small>${p.spy ? "SPY" : "WARGA"}${p.out ? " · Keluar" : ""}</small>
+    </div>
+  `).join("");
+
+  show("result");
+}
+
+function playAgain() {
+  // Pertahankan nama, tetapi acak ulang peran dan kata.
+  const names = players.map(p => p.name);
+  const count = players.length;
+  const cat = $("category").value;
+  const categories = cat === "campuran" ? Object.keys(words) : [cat];
+  const pool = categories.flatMap(c => words[c]);
+  const pair = pool[Math.floor(Math.random() * pool.length)];
+
+  citizenWord = Math.random() < 0.5 ? pair[0] : pair[1];
+  spyWord = citizenWord === pair[0] ? pair[1] : pair[0];
+
+  players = names.map(name => ({name, spy:false, out:false}));
+  shuffle(players);
+  players.slice(0, spyCount).forEach(p => p.spy = true);
+
+  revealIndex = 0;
+  renderReveal();
+  show("reveal");
+}
+</script>
+</body>
+</html>
